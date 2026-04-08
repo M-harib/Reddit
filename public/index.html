@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KarmaTok | Reddit Story Video Automation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <button id="theme-toggle" class="theme-toggle is-off" type="button" aria-label="Toggle light mode" aria-pressed="false">
+      <span class="theme-toggle-bulb" aria-hidden="true"></span>
+    </button>
+
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="water-drop drop-left-a"></div>
+    <div class="water-drop drop-left-b"></div>
+    <div class="water-drop drop-right-a"></div>
+    <div class="water-drop drop-right-b"></div>
+
+    <main class="layout">
+      <section class="hero">
+        <div class="hero-links" aria-label="Social links">
+          <a class="hero-social-link hero-social-reddit" href="https://www.reddit.com/" target="_blank" rel="noreferrer" aria-label="Open Reddit">
+            <img src="assets/reddit-pfp.svg" alt="Reddit mascot" class="hero-mascot" />
+          </a>
+          <a class="hero-social-link hero-social-youtube" href="https://www.youtube.com/" target="_blank" rel="noreferrer" aria-label="Open YouTube">
+            <img src="assets/youtube-pfp.svg" alt="YouTube logo" class="hero-mascot hero-mascot-youtube" />
+          </a>
+        </div>
+        <div class="hero-copy">
+          <h1>Reddit → Shorts</h1>
+          <p>
+            Use AI to turn viral stories into TikToks by adding Minecraft parkour, AI voiceover, and music in one click.
+          </p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <form id="fetch-form" class="inline-form">
+          <label>
+            Reddit Search
+            <input type="text" id="subreddit" value="stories" />
+          </label>
+          <label>
+            Amount
+            <input type="number" id="limit" value="8" min="1" max="20" />
+          </label>
+          <button type="submit">Find Trending</button>
+        </form>
+
+        <div id="stories" class="stories"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Generate Video</h2>
+        <div class="generator-layout">
+          <div class="generator-left">
+            <details class="settings-dropdown" open>
+              <summary>Quick Style Packs</summary>
+              <div class="settings-content">
+                <div class="quick-pack-grid" id="quick-pack-grid">
+                  <button type="button" class="quick-pack" data-pack="viral">Viral Pop</button>
+                  <button type="button" class="quick-pack" data-pack="cinema">Cinema Clean</button>
+                  <button type="button" class="quick-pack" data-pack="gaming">Gaming Loud</button>
+                  <button type="button" class="quick-pack" data-pack="minimal">Minimal Calm</button>
+                </div>
+                <div class="script-insights" id="script-insights">
+                  <span id="insight-words">0 words</span>
+                  <span id="insight-duration">Estimated voice: 0:00</span>
+                </div>
+              </div>
+            </details>
+
+            <form id="video-form" class="video-form">
+              <details class="settings-dropdown" open>
+                <summary>Story Content</summary>
+                <div class="settings-content">
+                  <label>
+                    Selected Story Title
+                    <input type="text" id="story-title" name="storyTitle" readonly required />
+                  </label>
+
+                  <label>
+                    Story Script
+                    <textarea id="story-text" name="storyText" rows="10" required></textarea>
+                  </label>
+                </div>
+              </details>
+
+              <details class="settings-dropdown" open>
+                <summary>Media Inputs</summary>
+                <div class="settings-content">
+                  <div class="default-media-grid">
+                    <label class="drop-zone" for="gameplay">
+                      <span class="drop-zone-title">Minecraft Gameplay File (mp4)</span>
+                      <span class="drop-zone-hint">Drag & drop file here or click to browse</span>
+                      <span class="drop-zone-file" data-file-for="gameplay">No file selected</span>
+                      <input type="file" id="gameplay" name="gameplay" accept="video/*" />
+                    </label>
+
+                    <label class="drop-zone" for="music">
+                      <span class="drop-zone-title">Background Music File (mp3/wav)</span>
+                      <span class="drop-zone-hint">Drag & drop file here or click to browse</span>
+                      <span class="drop-zone-file" data-file-for="music">No file selected</span>
+                      <input type="file" id="music" name="music" accept="audio/*" />
+                    </label>
+                  </div>
+
+                  <label class="save-defaults-toggle">
+                    <input type="checkbox" id="save-as-defaults" />
+                    Save uploaded gameplay/music as defaults
+                  </label>
+
+                  <p id="default-media-status" class="default-media-status"></p>
+                  <p id="default-media-files" class="default-media-files"></p>
+
+                  <label>
+                    Background Music Volume
+                    <input type="range" id="music-volume" min="0.05" max="0.8" step="0.01" value="0.15" />
+                  </label>
+                </div>
+              </details>
+
+              <details class="settings-dropdown" open>
+                <summary>TTS Settings (sound, speed, pitch)</summary>
+                <div class="settings-content">
+                  <label>
+                    Voice (20+ options)
+                    <select id="voice-id" name="voiceId">
+                      <option value="jessie-style" selected>Jessie Style (Bright Female)</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    TTS Voice Speed
+                    <select id="tts-speed" name="ttsSpeed">
+                      <option value="0.5">0.5x</option>
+                      <option value="0.75">0.75x</option>
+                      <option value="1" selected>1x (Normal)</option>
+                      <option value="1.25">1.25x</option>
+                      <option value="1.5">1.5x</option>
+                      <option value="2">2x</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    TTS Pitch
+                    <input type="range" id="tts-pitch" name="ttsPitch" min="-8" max="6" step="1" value="0" />
+                    <span id="tts-pitch-value">0 semitones</span>
+                  </label>
+
+                  <label>
+                    Preview Text (optional)
+                    <input type="text" id="preview-text" value="This is a voice preview for your Reddit story video. Let's make this sound amazing." />
+                  </label>
+
+                  <button type="button" id="preview-voice-btn">Preview Selected Voice</button>
+                  <audio id="voice-preview-player" controls hidden></audio>
+                </div>
+              </details>
+
+              <details class="settings-dropdown" open>
+                <summary>Captions</summary>
+                <div class="settings-content">
+                  <div class="caption-style-picker-wrap">
+                    <p class="caption-style-title">Subtitle Preset (Visual Picker)</p>
+                    <input type="hidden" id="subtitle-preset" name="subtitlePreset" value="viral" />
+                    <div id="caption-style-grid" class="caption-style-grid">
+                      <button type="button" class="caption-style-card" data-preset="none">
+                        <span class="caption-style-name">No Captions</span>
+                        <span class="caption-style-preview preview-none">No text overlay</span>
+                      </button>
+
+                      <button type="button" class="caption-style-card active" data-preset="viral">
+                        <span class="caption-style-name">Viral Outline</span>
+                        <span class="caption-style-preview preview-viral">THIS IS VIRAL</span>
+                      </button>
+
+                      <button type="button" class="caption-style-card" data-preset="classic">
+                        <span class="caption-style-name">Classic White</span>
+                        <span class="caption-style-preview preview-classic">Classic caption</span>
+                      </button>
+
+                      <button type="button" class="caption-style-card" data-preset="creator">
+                        <span class="caption-style-name">Creator</span>
+                        <span class="caption-style-preview preview-creator">CREATOR ENERGY</span>
+                      </button>
+
+                      <button type="button" class="caption-style-card" data-preset="cinematic">
+                        <span class="caption-style-name">Cinematic Yellow</span>
+                        <span class="caption-style-preview preview-cinematic">Cinematic moment</span>
+                      </button>
+
+                      <button type="button" class="caption-style-card" data-preset="neon">
+                        <span class="caption-style-name">Neon Glow</span>
+                        <span class="caption-style-preview preview-neon">NEON GLOW TEXT</span>
+                      </button>
+
+                      <button type="button" class="caption-style-card" data-preset="boxed">
+                        <span class="caption-style-name">Boxed Caption</span>
+                        <span class="caption-style-preview preview-boxed">Boxed subtitle</span>
+                      </button>
+
+                      <button type="button" class="caption-style-card" data-preset="minimal">
+                        <span class="caption-style-name">Minimal Clean</span>
+                        <span class="caption-style-preview preview-minimal">minimal clean</span>
+                      </button>
+
+                      <button type="button" class="caption-style-card" data-preset="comic">
+                        <span class="caption-style-name">Comic Pop</span>
+                        <span class="caption-style-preview preview-comic">POW! POP!</span>
+                      </button>
+
+                      <button type="button" class="caption-style-card" data-preset="news">
+                        <span class="caption-style-name">News Headline</span>
+                        <span class="caption-style-preview preview-news">BREAKING: update</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <label>
+                    Subtitle Effect
+                    <select id="subtitle-effect" name="subtitleEffect">
+                      <option value="none" selected>None</option>
+                      <option value="bounce">Bounce</option>
+                      <option value="fade">Fade</option>
+                      <option value="pop">Pop In</option>
+                      <option value="slide-up">Slide Up</option>
+                      <option value="glow-pulse">Glow Pulse</option>
+                      <option value="wiggle">Wiggle</option>
+                      <option value="flip-in">Flip In</option>
+                      <option value="zoom-out">Zoom Out</option>
+                      <option value="stamp">Stamp</option>
+                    </select>
+                  </label>
+                </div>
+              </details>
+
+              <button type="submit">Create Video</button>
+            </form>
+
+            <p id="status" class="status"></p>
+            <div id="generation-meta" class="generation-meta" hidden>
+              <span id="generation-stage">Preparing...</span>
+              <span id="generation-elapsed">00:00</span>
+            </div>
+            <div id="generation-progress" class="generation-progress" hidden>
+              <div id="generation-progress-fill" class="generation-progress-fill"></div>
+            </div>
+            <a id="download-link" class="download" hidden>Download Final MP4</a>
+          </div>
+
+          <aside class="preview-right">
+            <h3>Video Preview</h3>
+            <video id="result-video" controls class="result-video" hidden></video>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
