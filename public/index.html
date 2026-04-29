@@ -23,6 +23,8 @@
     <div class="water-drop drop-left-b"></div>
     <div class="water-drop drop-right-a"></div>
     <div class="water-drop drop-right-b"></div>
+    <div class="apple-float apple-left" aria-hidden="true"></div>
+    <div class="apple-float apple-right" aria-hidden="true"></div>
 
     <main class="layout">
       <section class="hero">
@@ -35,9 +37,12 @@
           </a>
         </div>
         <div class="hero-copy">
-          <h1>Reddit → Shorts</h1>
+          <h1>Built for Creators</h1>
           <p>
-            Use AI to turn viral stories into TikToks by adding Minecraft parkour, AI voiceover, and music in one click.
+            KarmaTok helps you turn <b>Reddit stories</b> into <b>short-form videos</b> fast with <b>AI voiceovers</b>, <b>captions</b>, <b>music</b>, and your own gameplay background.
+          </p>
+          <p>
+            <b>Be Our First 10 Creators</b>: get early-access perks, discounted founder pricing, and priority feature requests while we build the platform with you.
           </p>
         </div>
       </section>
@@ -60,6 +65,10 @@
 
       <section class="panel">
         <h2>Generate Video</h2>
+        <div class="gen-head-meta" aria-hidden="true">
+          <span class="micro-pill">Creator Mode</span>
+          <span class="micro-pill">Smart Defaults</span>
+        </div>
         <div class="generator-layout">
           <div class="generator-left">
             <details class="settings-dropdown" open>
@@ -129,17 +138,17 @@
               </details>
 
               <details class="settings-dropdown" open>
-                <summary>TTS Settings (sound, speed, pitch)</summary>
+                <summary>TTS Settings</summary>
                 <div class="settings-content">
                   <label>
-                    Voice (20+ options)
+                    Voice (20+)
                     <select id="voice-id" name="voiceId">
                       <option value="jessie-style" selected>Jessie Style (Bright Female)</option>
                     </select>
                   </label>
 
                   <label>
-                    TTS Voice Speed
+                    Speed
                     <select id="tts-speed" name="ttsSpeed">
                       <option value="0.5">0.5x</option>
                       <option value="0.75">0.75x</option>
@@ -151,17 +160,15 @@
                   </label>
 
                   <label>
-                    TTS Pitch
+                    Pitch
                     <input type="range" id="tts-pitch" name="ttsPitch" min="-8" max="6" step="1" value="0" />
                     <span id="tts-pitch-value">0 semitones</span>
                   </label>
 
-                  <label>
-                    Preview Text (optional)
-                    <input type="text" id="preview-text" value="This is a voice preview for your Reddit story video. Let's make this sound amazing." />
-                  </label>
-
-                  <button type="button" id="preview-voice-btn">Preview Selected Voice</button>
+                  <button type="button" id="preview-voice-btn" class="voice-play-btn" aria-label="Play voice sample" title="Play voice sample">
+                    <span class="voice-play-icon" aria-hidden="true"></span>
+                    <span class="voice-play-label">Play Voice</span>
+                  </button>
                   <audio id="voice-preview-player" controls hidden></audio>
                 </div>
               </details>
@@ -222,6 +229,16 @@
                         <span class="caption-style-name">News Headline</span>
                         <span class="caption-style-preview preview-news">BREAKING: update</span>
                       </button>
+
+                      <button type="button" class="caption-style-card" data-preset="frosted">
+                        <span class="caption-style-name">Frosted Card</span>
+                        <span class="caption-style-preview preview-frosted">soft glass subtitle</span>
+                      </button>
+
+                      <button type="button" class="caption-style-card" data-preset="burn">
+                        <span class="caption-style-name">Burn Impact</span>
+                        <span class="caption-style-preview preview-burn">BURN THIS IN</span>
+                      </button>
                     </div>
                   </div>
 
@@ -243,24 +260,115 @@
                 </div>
               </details>
 
-              <button type="submit">Create Video</button>
+              <button type="submit" class="create-video-btn">Create Video</button>
             </form>
 
             <p id="status" class="status"></p>
-            <div id="generation-meta" class="generation-meta" hidden>
-              <span id="generation-stage">Preparing...</span>
-              <span id="generation-elapsed">00:00</span>
-            </div>
             <div id="generation-progress" class="generation-progress" hidden>
-              <div id="generation-progress-fill" class="generation-progress-fill"></div>
+              <div class="generation-progress-head">
+                <span id="generation-stage">Preparing assets</span>
+                <span id="generation-percent">0%</span>
+              </div>
+              <div class="generation-progress-track">
+                <div id="generation-progress-fill" class="generation-progress-fill"></div>
+              </div>
             </div>
-            <a id="download-link" class="download" hidden>Download Final MP4</a>
+            <a id="download-link" class="download download-btn" hidden>Download Final MP4</a>
           </div>
 
-          <aside class="preview-right">
-            <h3>Video Preview</h3>
-            <video id="result-video" controls class="result-video" hidden></video>
+          <aside class="generator-right" aria-label="Preview and creator settings">
+            <section class="preview-right" id="preview-panel">
+              <h3>Video Preview</h3>
+              <div id="preview-placeholder" class="preview-placeholder" aria-live="polite">
+                <div class="preview-placeholder-art" aria-hidden="true">
+                  <div class="preview-thumb">
+                    <span class="preview-play"></span>
+                  </div>
+                </div>
+                <p class="preview-placeholder-text">Preview will appear here after your render starts.</p>
+                <div class="generation-progress preview-progress">
+                  <div id="preview-progress-fill" class="generation-progress-fill"></div>
+                </div>
+              </div>
+              <video id="result-video" controls class="result-video" hidden></video>
+            </section>
+
+            <aside class="quick-tips-widget" aria-label="Quick tips for creators">
+              <p class="quick-tips-title">Quick Tips</p>
+              <div class="quick-tips-list" id="quick-tips-track" role="list">
+                <div class="tip-card tip-hook is-active" role="listitem"><strong>Hook:</strong> Open with the wildest moment. Never start with "so today..."</div>
+                <div class="tip-card tip-length" role="listitem"><strong>Length:</strong> Stay under 58s. 80%+ watch time = algorithm boost.</div>
+                <div class="tip-card tip-curiosity" role="listitem"><strong>Curiosity:</strong> Tease the ending early so viewers need to know.</div>
+                <div class="tip-card tip-captions" role="listitem"><strong>Captions:</strong> Most viewers watch muted, so make subtitle words easy to scan.</div>
+                <div class="tip-card tip-pacing" role="listitem"><strong>Pacing:</strong> Avoid dead air. Keep sentence rhythm tight and cut filler.</div>
+                <div class="tip-card tip-ending" role="listitem"><strong>Ending:</strong> Close with a twist, cliffhanger, or payoff that earns rewatches.</div>
+              </div>
+              <div class="quick-tips-dots" id="quick-tips-dots" role="tablist" aria-label="Quick tips navigation">
+                <button type="button" class="tip-dot is-active" data-tip-dot="0" aria-label="Tip 1"></button>
+                <button type="button" class="tip-dot" data-tip-dot="1" aria-label="Tip 2"></button>
+                <button type="button" class="tip-dot" data-tip-dot="2" aria-label="Tip 3"></button>
+                <button type="button" class="tip-dot" data-tip-dot="3" aria-label="Tip 4"></button>
+                <button type="button" class="tip-dot" data-tip-dot="4" aria-label="Tip 5"></button>
+                <button type="button" class="tip-dot" data-tip-dot="5" aria-label="Tip 6"></button>
+              </div>
+              <div class="quick-tips-progress" aria-hidden="true">
+                <div id="quick-tips-progress-fill" class="quick-tips-progress-fill is-animating"></div>
+              </div>
+            </aside>
+
+            <div class="auto-post-widget" aria-label="Channel auto-post settings">
+              <p class="auto-post-title">Channel Auto Post</p>
+              <label class="auto-post-label" for="channel-url">Channel URL</label>
+              <input type="url" id="channel-url" placeholder="https://youtube.com/@yourchannel" autocomplete="url" />
+              <button type="button" id="auto-post-connect-btn" class="auto-post-btn">Save Channel URL</button>
+              <p class="auto-post-note">Beta helper: save once and reuse on future renders.</p>
+            </div>
           </aside>
+        </div>
+      </section>
+
+      <section class="panel social-proof" aria-label="Creator testimonials">
+        <div class="social-proof-head">
+          <h2>Creator Reviews</h2>
+          <p>Feedback from users who automated their content workflow with KarmaTok.</p>
+        </div>
+
+        <div class="social-proof-grid">
+          <article class="proof-card">
+            <div class="proof-user">
+              <img src="assets/testimonial-pfp-1.svg" alt="Profile photo of Mason Reed" class="proof-avatar" />
+              <div class="proof-user-meta">
+                <strong>Mason Reed</strong>
+                <span>Faceless Shorts Creator</span>
+              </div>
+            </div>
+            <div class="proof-stars" aria-label="5 out of 5 stars">★★★★★</div>
+            <p>"I used to spend 2-3 hours per video. Now I can batch 12 shorts in one evening."</p>
+          </article>
+
+          <article class="proof-card">
+            <div class="proof-user">
+              <img src="assets/testimonial-pfp-2.svg" alt="Profile photo of Nia Thompson" class="proof-avatar" />
+              <div class="proof-user-meta">
+                <strong>Nia Thompson</strong>
+                <span>Automation Side Hustler</span>
+              </div>
+            </div>
+            <div class="proof-stars" aria-label="5 out of 5 stars">★★★★★</div>
+            <p>"The automation flow finally made daily posting realistic for me, even with a full-time job."</p>
+          </article>
+
+          <article class="proof-card">
+            <div class="proof-user">
+              <img src="assets/testimonial-pfp-3.svg" alt="Profile photo of Kai Morales" class="proof-avatar" />
+              <div class="proof-user-meta">
+                <strong>Kai Morales</strong>
+                <span>Short-Form Video Editor</span>
+              </div>
+            </div>
+            <div class="proof-stars" aria-label="5 out of 5 stars">★★★★★</div>
+            <p>"This helped me go from random uploads to a repeatable content system that actually scales."</p>
+          </article>
         </div>
       </section>
     </main>

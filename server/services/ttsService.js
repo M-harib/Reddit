@@ -36,7 +36,7 @@ const VOICE_OPTIONS = [
   { id: "prabhat", label: "Prabhat (IN Male)", provider: "azure", voiceName: "en-IN-PrabhatNeural" },
   { id: "mitchell", label: "Mitchell (NZ Male)", provider: "azure", voiceName: "en-NZ-MitchellNeural" },
   { id: "molly", label: "Molly (NZ Female)", provider: "azure", voiceName: "en-NZ-MollyNeural" },
-  { id: "google-basic", label: "Google Basic (Fallback)", provider: "google" },
+  { id: "google-basic", label: "Serena (US Female)", provider: "google" },
 ];
 
 function splitText(text, maxLength = 180) {

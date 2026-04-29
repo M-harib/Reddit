@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="Kai Morales profile">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3d2437"/>
+      <stop offset="100%" stop-color="#1d1120"/>
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="80" fill="url(#bg3)"/>
+  <circle cx="80" cy="66" r="30" fill="#e2b793"/>
+  <path d="M46 62c2-24 14-36 34-36 17 0 30 10 34 30-4 1-8 2-13 2-20 0-37-7-55 4z" fill="#1e1d24"/>
+  <path d="M34 152c4-28 22-46 46-46s42 18 46 46" fill="#8c3f5d"/>
+  <circle cx="68" cy="68" r="3" fill="#2a1a12"/>
+  <circle cx="92" cy="68" r="3" fill="#2a1a12"/>
+  <path d="M70 84c6 5 14 5 20 0" stroke="#7d4f3b" stroke-width="3" fill="none" stroke-linecap="round"/>
+</svg>

@@ -8,7 +8,6 @@ const resultVideo = document.getElementById("result-video");
 const downloadLink = document.getElementById("download-link");
 const voiceSelect = document.getElementById("voice-id");
 const previewVoiceBtn = document.getElementById("preview-voice-btn");
-const previewTextInput = document.getElementById("preview-text");
 const voicePreviewPlayer = document.getElementById("voice-preview-player");
 const ttsPitchInput = document.getElementById("tts-pitch");
 const ttsPitchValue = document.getElementById("tts-pitch-value");
@@ -25,6 +24,16 @@ const generationStage = document.getElementById("generation-stage");
 const generationElapsed = document.getElementById("generation-elapsed");
 const generationProgress = document.getElementById("generation-progress");
 const generationProgressFill = document.getElementById("generation-progress-fill");
+const generationPercent = document.getElementById("generation-percent");
+const previewPanel = document.getElementById("preview-panel");
+const previewPlaceholder = document.getElementById("preview-placeholder");
+const previewProgressFill = document.getElementById("preview-progress-fill");
+const quickTipsWidget = document.querySelector(".quick-tips-widget");
+const quickTipsTrack = document.getElementById("quick-tips-track");
+const quickTipsDots = document.getElementById("quick-tips-dots");
+const quickTipsProgressFill = document.getElementById("quick-tips-progress-fill");
+const channelUrlInput = document.getElementById("channel-url");
+const autoPostConnectBtn = document.getElementById("auto-post-connect-btn");
 const defaultGameplayInput = document.getElementById("default-gameplay");
 const defaultMusicInput = document.getElementById("default-music");
 const saveDefaultMediaBtn = document.getElementById("save-default-media-btn");
@@ -36,6 +45,9 @@ const themeToggleBtn = document.getElementById("theme-toggle");
 
 const SETTINGS_KEY = "storyforgeSettingsV1";
 const THEME_KEY = "karmatokThemeV1";
+const VOICE_PREVIEW_CACHE_PREFIX = "karmatokVoicePreview:";
+const SAMPLE_PREVIEW_TEXT = "This is a voice preview for your Reddit story video. Let's make this sound amazing.";
+const CHANNEL_URL_KEY = "karmatokChannelUrlV1";
 
 const QUICK_PACKS = {
   viral: { subtitlePreset: "viral", subtitleEffect: "pop", ttsSpeed: "1", ttsPitch: "1", musicVolume: "0.17" },
@@ -56,6 +68,10 @@ let generationBusy = false;
 let fetchBusy = false;
 let connectionTimer = null;
 let lastKnownBackendOnline = null;
+let voicePreviewWarmTimeout = null;
+let quickTipsTimer = null;
+let quickTipIndex = 0;
+const voicePreviewCache = new Map();
 
 function setStatus(message, isError = false) {
   statusEl.textContent = message;
@@ -360,6 +376,95 @@ function updateScriptInsights() {
   insightDuration.textContent = `Estimated voice: ${formatDuration(seconds)}`;
 }
 
+function getVoicePreviewKey() {
+  return JSON.stringify({
+    voiceId: voiceSelect.value,
+    ttsSpeed: ttsSpeedSelect.value,
+    ttsPitch: ttsPitchInput.value,
+    previewText: SAMPLE_PREVIEW_TEXT,
+  });
+}
+
+function getStoredPreviewUrl(key) {
+  if (voicePreviewCache.has(key)) {
+    return voicePreviewCache.get(key);
+  }
+
+  try {
+    const stored = localStorage.getItem(VOICE_PREVIEW_CACHE_PREFIX + key);
+    if (stored) {
+      voicePreviewCache.set(key, stored);
+      return stored;
+    }
+  } catch (error) {
+    // Ignore storage access issues.
+  }
+
+  return "";
+}
+
+function storePreviewUrl(key, url) {
+  voicePreviewCache.set(key, url);
+  try {
+    localStorage.setItem(VOICE_PREVIEW_CACHE_PREFIX + key, url);
+  } catch (error) {
+    // Ignore storage write failures.
+  }
+}
+
+function clearStoredPreviewUrl(key) {
+  voicePreviewCache.delete(key);
+  try {
+    localStorage.removeItem(VOICE_PREVIEW_CACHE_PREFIX + key);
+  } catch (error) {
+    // Ignore storage delete failures.
+  }
+}
+
+async function requestVoicePreviewUrl() {
+  const response = await fetch("/api/video/preview-voice", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      voiceId: voiceSelect.value,
+      ttsSpeed: ttsSpeedSelect.value,
+      ttsPitch: ttsPitchInput.value,
+      previewText: SAMPLE_PREVIEW_TEXT,
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok || !data.ok) {
+    throw new Error(data.error || "Could not generate preview.");
+  }
+
+  return {
+    previewUrl: data.previewUrl,
+    warning: data.warning,
+  };
+}
+
+function scheduleVoicePreviewWarm() {
+  if (!backendOnline) return;
+  if (voicePreviewWarmTimeout) {
+    window.clearTimeout(voicePreviewWarmTimeout);
+  }
+
+  voicePreviewWarmTimeout = window.setTimeout(async () => {
+    const key = getVoicePreviewKey();
+    if (getStoredPreviewUrl(key)) return;
+
+    try {
+      const generated = await requestVoicePreviewUrl();
+      storePreviewUrl(key, generated.previewUrl);
+    } catch (error) {
+      // Warmup is best-effort. Ignore failures.
+    }
+  }, 140);
+}
+
 function saveSettings() {
   const settings = {
     voiceId: voiceSelect.value,
@@ -413,28 +518,86 @@ function setGeneratingState(isGenerating) {
   refreshControlStates();
 }
 
+function setPreviewProgress(value) {
+  const clamped = Math.max(0, Math.min(100, Number(value) || 0));
+  if (generationProgressFill) generationProgressFill.style.width = `${clamped}%`;
+  if (previewProgressFill) previewProgressFill.style.width = `${clamped}%`;
+  if (generationPercent) generationPercent.textContent = `${Math.round(clamped)}%`;
+}
+
+function setPreviewIdleState() {
+  if (previewPanel) {
+    previewPanel.hidden = false;
+    previewPanel.classList.remove("is-video-ready");
+  }
+  setPreviewProgress(0);
+  if (previewPlaceholder) {
+    previewPlaceholder.hidden = false;
+  }
+  if (resultVideo) {
+    resultVideo.pause();
+    resultVideo.hidden = true;
+
+    const hasSource = Boolean(resultVideo.getAttribute("src") || resultVideo.currentSrc);
+    if (hasSource) {
+      resultVideo.removeAttribute("src");
+      resultVideo.load();
+    }
+  }
+
+  if (currentPreviewObjectUrl) {
+    URL.revokeObjectURL(currentPreviewObjectUrl);
+    currentPreviewObjectUrl = null;
+  }
+}
+
+function setPreviewReadyState() {
+  if (previewPanel) {
+    previewPanel.hidden = false;
+    previewPanel.classList.add("is-video-ready");
+  }
+  if (previewPlaceholder) {
+    previewPlaceholder.hidden = true;
+  }
+  if (resultVideo) {
+    resultVideo.hidden = false;
+  }
+}
+
 function startGenerationFeedback() {
   let progress = 8;
   let elapsedSeconds = 0;
-  const stages = ["Preparing assets", "Generating narration", "Compositing video", "Finalizing export"];
+  const stages = ["Generating voiceover...", "Compositing video...", "Compositing video...", "Exporting final MP4..."];
 
-  generationMeta.hidden = false;
-  generationProgress.hidden = false;
-  generationProgressFill.style.width = `${progress}%`;
-  generationStage.textContent = stages[0];
-  generationElapsed.textContent = "00:00";
+  if (previewPanel) {
+    previewPanel.hidden = false;
+    previewPanel.classList.remove("is-video-ready");
+  }
+  if (previewPlaceholder) previewPlaceholder.hidden = false;
+  if (resultVideo) resultVideo.hidden = true;
+
+  if (generationProgress) generationProgress.hidden = false;
+  setPreviewProgress(progress);
+  if (generationStage) generationStage.textContent = stages[0];
+  if (generationElapsed) generationElapsed.textContent = "00:00";
 
   progressTimer = window.setInterval(() => {
     progress = Math.min(92, progress + Math.random() * 3.5);
-    generationProgressFill.style.width = `${progress.toFixed(1)}%`;
-    if (progress > 28) generationStage.textContent = stages[1];
-    if (progress > 56) generationStage.textContent = stages[2];
-    if (progress > 78) generationStage.textContent = stages[3];
+    setPreviewProgress(progress.toFixed(1));
+    if (generationStage) {
+      if (progress > 78) {
+        generationStage.textContent = stages[3];
+      } else if (progress > 56) {
+        generationStage.textContent = stages[2];
+      } else if (progress > 28) {
+        generationStage.textContent = stages[1];
+      }
+    }
   }, 900);
 
   elapsedTimer = window.setInterval(() => {
     elapsedSeconds += 1;
-    generationElapsed.textContent = formatDuration(elapsedSeconds);
+    if (generationElapsed) generationElapsed.textContent = formatDuration(elapsedSeconds);
   }, 1000);
 }
 
@@ -449,17 +612,17 @@ function stopGenerationFeedback(completed) {
   }
 
   if (completed) {
-    generationProgressFill.style.width = "100%";
-    generationStage.textContent = "Done";
+    setPreviewProgress(100);
+    if (generationStage) generationStage.textContent = "Done";
+    setPreviewReadyState();
     window.setTimeout(() => {
-      generationMeta.hidden = true;
-      generationProgress.hidden = true;
-      generationProgressFill.style.width = "0%";
+      if (generationProgress) generationProgress.hidden = true;
+      if (generationProgressFill) generationProgressFill.style.width = "0%";
     }, 800);
   } else {
-    generationMeta.hidden = true;
-    generationProgress.hidden = true;
-    generationProgressFill.style.width = "0%";
+    if (generationProgress) generationProgress.hidden = true;
+    if (generationProgressFill) generationProgressFill.style.width = "0%";
+    setPreviewIdleState();
   }
 }
 
@@ -470,12 +633,89 @@ function setCaptionPreset(preset) {
   });
 }
 
+function resetQuickTipsProgressBar() {
+  if (!quickTipsProgressFill) return;
+  quickTipsProgressFill.classList.remove("is-animating");
+  // Force reflow so CSS animation restarts cleanly each tip change.
+  void quickTipsProgressFill.offsetWidth;
+  quickTipsProgressFill.classList.add("is-animating");
+}
+
+function showQuickTip(index) {
+  if (!quickTipsTrack || !quickTipsDots) return;
+
+  const cards = Array.from(quickTipsTrack.querySelectorAll(".tip-card"));
+  const dots = Array.from(quickTipsDots.querySelectorAll(".tip-dot"));
+  if (!cards.length || !dots.length) return;
+
+  quickTipIndex = (index + cards.length) % cards.length;
+  cards.forEach((card, cardIndex) => {
+    card.classList.toggle("is-active", cardIndex === quickTipIndex);
+  });
+  dots.forEach((dot, dotIndex) => {
+    dot.classList.toggle("is-active", dotIndex === quickTipIndex);
+    dot.setAttribute("aria-selected", String(dotIndex === quickTipIndex));
+  });
+
+  resetQuickTipsProgressBar();
+}
+
+function startQuickTipsCarousel() {
+  if (!quickTipsTrack || !quickTipsDots) return;
+  if (quickTipsTimer) {
+    window.clearInterval(quickTipsTimer);
+  }
+  quickTipsTimer = window.setInterval(() => {
+    showQuickTip(quickTipIndex + 1);
+  }, 4800);
+}
+
+function initializeQuickTipsCarousel() {
+  if (!quickTipsTrack || !quickTipsDots) return;
+
+  const dots = Array.from(quickTipsDots.querySelectorAll(".tip-dot"));
+  if (!dots.length) return;
+
+  dots.forEach((dot) => {
+    dot.addEventListener("click", () => {
+      const requested = Number(dot.dataset.tipDot);
+      if (Number.isNaN(requested)) return;
+      showQuickTip(requested);
+      startQuickTipsCarousel();
+    });
+  });
+
+  if (quickTipsWidget) {
+    quickTipsWidget.addEventListener("mouseenter", () => {
+      if (quickTipsTimer) {
+        window.clearInterval(quickTipsTimer);
+        quickTipsTimer = null;
+      }
+    });
+
+    quickTipsWidget.addEventListener("mouseleave", () => {
+      startQuickTipsCarousel();
+      resetQuickTipsProgressBar();
+    });
+  }
+
+  showQuickTip(0);
+  startQuickTipsCarousel();
+}
+
 function waitForVideoLoad(url, timeoutMs = 18000) {
   return new Promise((resolve, reject) => {
     let timeoutHandle = null;
 
+    const isPlayableVideoReady = () => {
+      const duration = Number(resultVideo.duration);
+      return Number.isFinite(duration) && duration > 0;
+    };
+
     const cleanup = () => {
+      resultVideo.removeEventListener("loadedmetadata", handleLoaded);
       resultVideo.removeEventListener("loadeddata", handleLoaded);
+      resultVideo.removeEventListener("canplay", handleLoaded);
       resultVideo.removeEventListener("error", handleError);
       if (timeoutHandle) {
         window.clearTimeout(timeoutHandle);
@@ -483,6 +723,9 @@ function waitForVideoLoad(url, timeoutMs = 18000) {
     };
 
     const handleLoaded = () => {
+      if (!isPlayableVideoReady()) {
+        return;
+      }
       cleanup();
       resolve(url);
     };
@@ -497,11 +740,12 @@ function waitForVideoLoad(url, timeoutMs = 18000) {
       reject(new Error("Video preview load timed out."));
     }, timeoutMs);
 
-    resultVideo.addEventListener("loadeddata", handleLoaded, { once: true });
+    resultVideo.addEventListener("loadedmetadata", handleLoaded);
+    resultVideo.addEventListener("loadeddata", handleLoaded);
+    resultVideo.addEventListener("canplay", handleLoaded);
     resultVideo.addEventListener("error", handleError, { once: true });
 
     resultVideo.src = url;
-    resultVideo.hidden = false;
     resultVideo.load();
   });
 }
@@ -515,6 +759,7 @@ async function loadResultVideo(videoUrl) {
   }
 
   resultVideo.pause();
+  resultVideo.hidden = true;
   resultVideo.removeAttribute("src");
   resultVideo.load();
 
@@ -547,7 +792,6 @@ async function loadDefaultMediaState() {
     };
 
     if (defaultMediaState.gameplay && defaultMediaState.music) {
-      setDefaultMediaStatus("Defaults ready: gameplay + music saved.");
     } else if (defaultMediaState.gameplay || defaultMediaState.music) {
       setDefaultMediaStatus("Partial defaults saved. Add the missing file for full auto mode.");
     } else {
@@ -599,6 +843,7 @@ function createStoryCard(story) {
   card.querySelector("button").addEventListener("click", () => {
     storyTitleInput.value = story.title;
     storyTextInput.value = story.selftext;
+    setPreviewIdleState();
     setStatus("Story selected. Upload your gameplay and music, then create video.");
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   });
@@ -619,7 +864,7 @@ async function loadVoices() {
     data.voices.forEach((voice) => {
       const option = document.createElement("option");
       option.value = voice.id;
-      option.textContent = `${voice.label} (${voice.provider.toUpperCase()})`;
+      option.textContent = voice.label;
       if (voice.id === "jessie-style") {
         option.selected = true;
       }
@@ -636,6 +881,8 @@ async function loadVoices() {
     }
   } catch (error) {
     // Keep default option if voices cannot be loaded.
+  } finally {
+    scheduleVoicePreviewWarm();
   }
 }
 
@@ -657,6 +904,7 @@ if (captionStyleGrid && subtitlePresetInput) {
   activeCaptionCards.forEach((card) => {
     card.addEventListener("click", () => {
       setCaptionPreset(card.dataset.preset || "viral");
+      setPreviewIdleState();
       saveSettings();
     });
   });
@@ -669,17 +917,24 @@ if (quickPackGrid) {
   activeQuickPackButtons.forEach((button) => {
     button.addEventListener("click", () => {
       applyQuickPack(button.dataset.pack);
+      setPreviewIdleState();
     });
   });
 }
 
 [voiceSelect, ttsSpeedSelect, ttsPitchInput, subtitleEffectSelect, musicVolumeInput].forEach((element) => {
-  element.addEventListener("change", saveSettings);
+  element.addEventListener("change", () => {
+    saveSettings();
+    setPreviewIdleState();
+  });
 });
 
 storyTextInput.addEventListener("input", updateScriptInsights);
+storyTextInput.addEventListener("input", setPreviewIdleState);
+storyTitleInput.addEventListener("input", setPreviewIdleState);
 ttsSpeedSelect.addEventListener("change", updateScriptInsights);
 updateScriptInsights();
+setPreviewIdleState();
 
 previewVoiceBtn.addEventListener("click", async () => {
   if (!backendOnline) {
@@ -689,36 +944,63 @@ previewVoiceBtn.addEventListener("click", async () => {
 
   try {
     previewVoiceBtn.disabled = true;
-    setStatus("Generating voice preview...");
+    const key = getVoicePreviewKey();
+    let previewUrl = getStoredPreviewUrl(key);
+    let warning = "";
 
-    const response = await fetch("/api/video/preview-voice", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        voiceId: voiceSelect.value,
-        ttsSpeed: document.getElementById("tts-speed").value,
-        ttsPitch: ttsPitchInput.value,
-        previewText: previewTextInput.value,
-      }),
-    });
-
-    const data = await response.json();
-    if (!response.ok || !data.ok) {
-      throw new Error(data.error || "Could not generate preview.");
+    if (!previewUrl) {
+      setStatus("Preparing voice sample...");
+      const generated = await requestVoicePreviewUrl();
+      previewUrl = generated.previewUrl;
+      warning = generated.warning || "";
+      storePreviewUrl(key, previewUrl);
     }
 
-    voicePreviewPlayer.src = `${data.previewUrl}?t=${Date.now()}`;
+    voicePreviewPlayer.pause();
+    voicePreviewPlayer.currentTime = 0;
+    voicePreviewPlayer.src = previewUrl;
     voicePreviewPlayer.hidden = false;
     await voicePreviewPlayer.play();
-    setStatus(data.warning ? `Voice preview ready. ${data.warning}` : "Voice preview ready. Listen and choose your favorite.");
+    setStatus(warning ? `Voice preview ready. ${warning}` : "Voice sample playing.");
   } catch (error) {
+    clearStoredPreviewUrl(getVoicePreviewKey());
     setStatus(error.message, true);
   } finally {
     previewVoiceBtn.disabled = false;
   }
 });
+
+[voiceSelect, ttsSpeedSelect, ttsPitchInput].forEach((element) => {
+  element.addEventListener("change", scheduleVoicePreviewWarm);
+});
+
+scheduleVoicePreviewWarm();
+
+try {
+  if (channelUrlInput) {
+    channelUrlInput.value = localStorage.getItem(CHANNEL_URL_KEY) || "";
+  }
+} catch (error) {
+  // Ignore storage read failures.
+}
+
+if (autoPostConnectBtn) {
+  autoPostConnectBtn.addEventListener("click", () => {
+    const enteredUrl = (channelUrlInput?.value || "").trim();
+    if (!enteredUrl) {
+      setStatus("Enter your channel URL first.", true);
+      return;
+    }
+
+    try {
+      localStorage.setItem(CHANNEL_URL_KEY, enteredUrl);
+    } catch (error) {
+      // Ignore storage write failures.
+    }
+
+    setStatus("Channel URL saved. Auto-post integration coming soon.");
+  });
+}
 
 fetchForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -813,7 +1095,7 @@ videoForm.addEventListener("submit", async (event) => {
   if (music) formData.append("music", music);
 
   setStatus("Creating video. This can take 30-120 seconds depending on file sizes...");
-  resultVideo.hidden = true;
+  setPreviewIdleState();
   downloadLink.hidden = true;
   setGeneratingState(true);
   startGenerationFeedback();
@@ -873,3 +1155,4 @@ videoForm.addEventListener("submit", async (event) => {
 startBackendMonitoring();
 bindDropZones();
 initializeThemeToggle();
+initializeQuickTipsCarousel();
