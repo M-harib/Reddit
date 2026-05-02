@@ -49,7 +49,8 @@ function toAssTime(seconds) {
 }
 
 function getAlignmentTagForPreset(preset) {
-  if (preset === "viral") return "\\an2";
+  // Use center alignment for all presets so captions appear in the middle
+  // of the video rather than at the bottom.
   return "\\an5";
 }
 
@@ -69,7 +70,9 @@ function getEffectTag(effect, preset) {
   }
 
   if (effect === "slide-up") {
-    return `{${alignmentTag}\\move(540,1220,540,1080,0,180)}`;
+    // animate around the vertical center (PlayResY / 2 = 960)
+    // start slightly below center and move to slightly above center
+    return `{${alignmentTag}\\move(540,1100,540,820,0,180)}`;
   }
 
   if (effect === "glow-pulse") {
@@ -116,7 +119,9 @@ function buildEvents(units, totalDuration, effect, preset, startOffset = 0) {
 
     cursor = end;
 
-    const safeText = sanitizeSubtitleText(line).replace(/,/g, "\\,");
+    // sanitize text but do not insert escape backslashes for commas —
+    // they were appearing verbatim in some renders.
+    const safeText = sanitizeSubtitleText(line);
     return `Dialogue: 0,${toAssTime(start)},${toAssTime(end)},Main,,0,0,0,,${effectTag}${safeText}`;
   });
 }

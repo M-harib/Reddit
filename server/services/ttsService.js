@@ -11,31 +11,31 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
 
 const VOICE_OPTIONS = [
-  { id: "jessie-style", label: "Jessie Style (Bright Female)", provider: "azure", voiceName: "en-US-AvaMultilingualNeural", style: "cheerful" },
-  { id: "ava", label: "Ava (US Female)", provider: "azure", voiceName: "en-US-AvaNeural" },
+  { id: "jessie-style", label: "Jessie Style (Bright Female)", provider: "azure", voiceName: "en-US-AvaMultilingualNeural", style: "cheerful", profile: { pitchRatio: 1.08, bass: -2, treble: 3, volume: 1.02 } },
+  { id: "ava", label: "Ava (US Female)", provider: "azure", voiceName: "en-US-AvaNeural", profile: { pitchRatio: 1.03, bass: -1, treble: 2, volume: 1.01 } },
   { id: "aria", label: "Aria (US Female)", provider: "azure", voiceName: "en-US-AriaNeural" },
   { id: "jenny", label: "Jenny (US Female)", provider: "azure", voiceName: "en-US-JennyNeural" },
   { id: "emma", label: "Emma (US Female)", provider: "azure", voiceName: "en-US-EmmaNeural" },
   { id: "michelle", label: "Michelle (US Female)", provider: "azure", voiceName: "en-US-MichelleNeural" },
   { id: "ana", label: "Ana (US Female)", provider: "azure", voiceName: "en-US-AnaNeural" },
-  { id: "andrew", label: "Andrew (US Male)", provider: "azure", voiceName: "en-US-AndrewNeural" },
-  { id: "brian", label: "Brian (US Male)", provider: "azure", voiceName: "en-US-BrianNeural" },
-  { id: "christopher", label: "Christopher (US Male)", provider: "azure", voiceName: "en-US-ChristopherNeural" },
-  { id: "roger", label: "Roger (US Male)", provider: "azure", voiceName: "en-US-RogerNeural" },
-  { id: "steffan", label: "Steffan (US Male)", provider: "azure", voiceName: "en-US-SteffanNeural" },
-  { id: "guy", label: "Guy (UK Male)", provider: "azure", voiceName: "en-GB-GuyNeural" },
-  { id: "libby", label: "Libby (UK Female)", provider: "azure", voiceName: "en-GB-LibbyNeural" },
-  { id: "maisie", label: "Maisie (UK Female)", provider: "azure", voiceName: "en-GB-MaisieNeural" },
-  { id: "sonia", label: "Sonia (UK Female)", provider: "azure", voiceName: "en-GB-SoniaNeural" },
-  { id: "thomas", label: "Thomas (UK Male)", provider: "azure", voiceName: "en-GB-ThomasNeural" },
-  { id: "natasha", label: "Natasha (AU Female)", provider: "azure", voiceName: "en-AU-NatashaNeural" },
-  { id: "william", label: "William (AU Male)", provider: "azure", voiceName: "en-AU-WilliamNeural" },
-  { id: "clara", label: "Clara (CA Female)", provider: "azure", voiceName: "en-CA-ClaraNeural" },
-  { id: "liam", label: "Liam (CA Male)", provider: "azure", voiceName: "en-CA-LiamNeural" },
-  { id: "neerja", label: "Neerja (IN Female)", provider: "azure", voiceName: "en-IN-NeerjaNeural" },
-  { id: "prabhat", label: "Prabhat (IN Male)", provider: "azure", voiceName: "en-IN-PrabhatNeural" },
-  { id: "mitchell", label: "Mitchell (NZ Male)", provider: "azure", voiceName: "en-NZ-MitchellNeural" },
-  { id: "molly", label: "Molly (NZ Female)", provider: "azure", voiceName: "en-NZ-MollyNeural" },
+  { id: "andrew", label: "Andrew (US Male)", provider: "azure", voiceName: "en-US-AndrewNeural", profile: { pitchRatio: 0.94, bass: 3, treble: -1, volume: 1.03 } },
+  { id: "brian", label: "Brian (US Male)", provider: "azure", voiceName: "en-US-BrianNeural", profile: { pitchRatio: 0.9, bass: 4, treble: -2, volume: 0.98 } },
+  { id: "christopher", label: "Christopher (US Male)", provider: "azure", voiceName: "en-US-ChristopherNeural", profile: { pitchRatio: 0.92, bass: 2, treble: -1, volume: 1 } },
+  { id: "roger", label: "Roger (US Male)", provider: "azure", voiceName: "en-US-RogerNeural", profile: { pitchRatio: 0.9, bass: 4, treble: -2, volume: 0.98 } },
+  { id: "steffan", label: "Steffan (US Male)", provider: "azure", voiceName: "en-US-SteffanNeural", profile: { pitchRatio: 0.95, bass: 2, treble: 0, volume: 1.02 } },
+  { id: "guy", label: "Guy (UK Male)", provider: "azure", voiceName: "en-GB-GuyNeural", profile: { pitchRatio: 0.93, bass: 3, treble: -1, volume: 1 } },
+  { id: "libby", label: "Libby (UK Female)", provider: "azure", voiceName: "en-GB-LibbyNeural", profile: { pitchRatio: 1.05, bass: -1, treble: 2, volume: 1.01 } },
+  { id: "maisie", label: "Maisie (UK Female)", provider: "azure", voiceName: "en-GB-MaisieNeural", profile: { pitchRatio: 1.07, bass: -2, treble: 3, volume: 1.02 } },
+  { id: "sonia", label: "Sonia (UK Female)", provider: "azure", voiceName: "en-GB-SoniaNeural", profile: { pitchRatio: 1.02, bass: 0, treble: 1, volume: 1 } },
+  { id: "thomas", label: "Thomas (UK Male)", provider: "azure", voiceName: "en-GB-ThomasNeural", profile: { pitchRatio: 0.9, bass: 4, treble: -2, volume: 0.99 } },
+  { id: "natasha", label: "Natasha (AU Female)", provider: "azure", voiceName: "en-AU-NatashaNeural", profile: { pitchRatio: 1.04, bass: -1, treble: 2, volume: 1.01 } },
+  { id: "william", label: "William (AU Male)", provider: "azure", voiceName: "en-AU-WilliamNeural", profile: { pitchRatio: 0.92, bass: 3, treble: -1, volume: 1 } },
+  { id: "clara", label: "Clara (CA Female)", provider: "azure", voiceName: "en-CA-ClaraNeural", profile: { pitchRatio: 1.03, bass: -1, treble: 1, volume: 1 } },
+  { id: "liam", label: "Liam (CA Male)", provider: "azure", voiceName: "en-CA-LiamNeural", profile: { pitchRatio: 0.93, bass: 2, treble: -1, volume: 1 } },
+  { id: "neerja", label: "Neerja (IN Female)", provider: "azure", voiceName: "en-IN-NeerjaNeural", profile: { pitchRatio: 1.02, bass: 0, treble: 1, volume: 1 } },
+  { id: "prabhat", label: "Prabhat (IN Male)", provider: "azure", voiceName: "en-IN-PrabhatNeural", profile: { pitchRatio: 0.91, bass: 3, treble: -1, volume: 0.99 } },
+  { id: "mitchell", label: "Mitchell (NZ Male)", provider: "azure", voiceName: "en-NZ-MitchellNeural", profile: { pitchRatio: 0.95, bass: 2, treble: 0, volume: 1 } },
+  { id: "molly", label: "Molly (NZ Female)", provider: "azure", voiceName: "en-NZ-MollyNeural", profile: { pitchRatio: 1.06, bass: -1, treble: 2, volume: 1.01 } },
   { id: "google-basic", label: "Serena (US Female)", provider: "google" },
 ];
 
@@ -219,6 +219,12 @@ function getGoogleVoiceProfile(voiceId) {
   ];
 
   return profiles[hash % profiles.length];
+}
+
+function getVoiceProfile(voiceId) {
+  const cfg = VOICE_OPTIONS.find((v) => v.id === voiceId);
+  if (cfg && cfg.profile) return cfg.profile;
+  return getGoogleVoiceProfile(voiceId);
 }
 
 function applyVoiceProfileToMp3(inputPath, profile) {
@@ -448,6 +454,15 @@ async function generateNarrationMp3({
         ttsSpeed,
         voiceId,
       });
+    }
+
+    // Apply a per-voice profile (bass/treble/pitchRatio/volume) so different
+    // voices have distinct timbres even when using the same TTS backend.
+    try {
+      const profile = getVoiceProfile(voiceId);
+      await applyVoiceProfileToMp3(segmentPath, profile);
+    } catch (_) {
+      // Ignore profile application errors and continue.
     }
 
     await applyPitchShiftToMp3(segmentPath, ttsPitch);
