@@ -16,10 +16,11 @@ const { ensureDir } = require("../utils/fs");
 
 const router = express.Router();
 
-const tempDir = path.join(__dirname, "..", "..", "temp");
-const outputDir = path.join(__dirname, "..", "..", "outputs");
+const isServerless = Boolean(process.env.VERCEL || process.env.SERVERLESS);
+const tempDir = process.env.TEMP_DIR || (isServerless ? path.join("/tmp", "temp") : path.join(__dirname, "..", "..", "temp"));
+const outputDir = process.env.OUTPUT_DIR || (isServerless ? path.join("/tmp", "outputs") : path.join(__dirname, "..", "..", "outputs"));
 const previewDir = path.join(outputDir, "previews");
-const mediaLibraryDir = path.join(__dirname, "..", "..", "media-library");
+const mediaLibraryDir = process.env.MEDIA_LIBRARY_DIR || path.join(__dirname, "..", "..", "media-library");
 ensureDir(tempDir);
 ensureDir(outputDir);
 ensureDir(previewDir);
@@ -48,6 +49,12 @@ function replaceDefaultMediaFile(prefix, uploadedPath, originalName) {
   }
 
   const safeExt = (path.extname(originalName || "") || ".bin").toLowerCase();
+  if (isServerless) {
+    const destination = path.join("/tmp", `${prefix}${safeExt}`);
+    fs.renameSync(uploadedPath, destination);
+    return destination;
+  }
+
   const destination = path.join(mediaLibraryDir, `${prefix}${safeExt}`);
   fs.renameSync(uploadedPath, destination);
   return destination;
