@@ -186,10 +186,12 @@ router.post(
     let bodyNarrationPath = null;
     let gameplayPath = null;
     let musicPath = null;
+    let gameplay = null;
+    let music = null;
 
     try {
-      const gameplay = req.files?.gameplay?.[0];
-      const music = req.files?.music?.[0];
+      gameplay = req.files?.gameplay?.[0];
+      music = req.files?.music?.[0];
 
       const defaultGameplayPath = findDefaultMediaFile("default-gameplay");
       const defaultMusicPath = findDefaultMediaFile("default-music");
@@ -285,8 +287,8 @@ router.post(
         narrationPath,
         titleNarrationPath,
         bodyNarrationPath,
-        gameplay?.path,
-        music?.path,
+        req.files?.gameplay?.[0]?.path,
+        req.files?.music?.[0]?.path,
       ].filter(Boolean);
 
       for (const filePath of cleanupTargets) {
