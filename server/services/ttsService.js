@@ -227,23 +227,33 @@ function getVoiceProfile(voiceId) {
   return getGoogleVoiceProfile(voiceId);
 }
 
-function applyVoiceProfileToMp3(inputPath, profile) {
-  if (!profile || (profile.pitchRatio === 1 && profile.bass === 0 && profile.treble === 0 && profile.volume === 1)) {
-    return Promise.resolve();
+function applyAudioProcessingMp3(inputPath, profile, ttsPitch = 0) {
+  const pitch = Math.max(-8, Math.min(Number(ttsPitch) || 0, 6));
+  const profilePitchRatio = profile ? Math.max(0.9, Math.min(profile.pitchRatio || 1, 1.1)) : 1;
+  const semitoneRatio = pitch !== 0 ? Math.pow(2, pitch / 12) : 1;
+  const combinedRatio = profilePitchRatio * semitoneRatio;
+
+  const pitchNeeded = Math.abs(combinedRatio - 1) > 0.0005;
+  const eqNeeded = profile && (profile.bass !== 0 || profile.treble !== 0 || (profile.volume || 1) !== 1);
+
+  if (!pitchNeeded && !eqNeeded) return Promise.resolve();
+
+  const filters = [];
+  if (pitchNeeded) {
+    const atempo = Math.max(0.5, Math.min(1 / combinedRatio, 2));
+    filters.push(
+      `asetrate=44100*${combinedRatio.toFixed(5)}`,
+      "aresample=44100",
+      `atempo=${atempo.toFixed(5)}`
+    );
+  }
+  if (eqNeeded) {
+    if (profile.bass !== 0)       filters.push(`bass=g=${profile.bass}`);
+    if (profile.treble !== 0)     filters.push(`treble=g=${profile.treble}`);
+    if ((profile.volume || 1) !== 1) filters.push(`volume=${profile.volume}`);
   }
 
-  const tempOut = `${inputPath}.profile.mp3`;
-  const pitchRatio = Math.max(0.9, Math.min(profile.pitchRatio, 1.1));
-  const atempoCompensation = Math.max(0.9, Math.min(1 / pitchRatio, 1.1));
-  const filters = [
-    `asetrate=44100*${pitchRatio.toFixed(4)}`,
-    "aresample=44100",
-    `atempo=${atempoCompensation.toFixed(4)}`,
-    `bass=g=${profile.bass}`,
-    `treble=g=${profile.treble}`,
-    `volume=${profile.volume}`,
-  ];
-
+  const tempOut = `${inputPath}.processed.mp3`;
   return new Promise((resolve, reject) => {
     ffmpeg()
       .input(inputPath)
@@ -256,9 +266,7 @@ function applyVoiceProfileToMp3(inputPath, profile) {
         resolve();
       })
       .on("error", (error) => {
-        if (fs.existsSync(tempOut)) {
-          fs.unlinkSync(tempOut);
-        }
+        if (fs.existsSync(tempOut)) fs.unlinkSync(tempOut);
         reject(error);
       })
       .save(tempOut);
@@ -307,58 +315,9 @@ async function synthesizeGoogleChunk({ text, filePath, ttsSpeed, voiceId }) {
   }
 
   const profile = getGoogleVoiceProfile(voiceId);
-  await applyVoiceProfileToMp3(filePath, profile);
+  await applyAudioProcessingMp3(filePath, profile, 0);
 }
 
-async function applyPitchShiftToMp3(inputPath, semitones = 0) {
-  const pitch = Math.max(-8, Math.min(Number(semitones) || 0, 6));
-  if (pitch === 0) {
-    return;
-  }
-
-  const sampleRate = await getAudioSampleRate(inputPath);
-  const ratio = Math.pow(2, pitch / 12);
-  const preserveTempo = Math.max(0.5, Math.min(1 / ratio, 2));
-  const tempOut = `${inputPath}.pitch.mp3`;
-
-  return new Promise((resolve, reject) => {
-    ffmpeg()
-      .input(inputPath)
-      .audioFilters([
-        `asetrate=${sampleRate}*${ratio.toFixed(5)}`,
-        `aresample=${sampleRate}`,
-        `atempo=${preserveTempo.toFixed(5)}`,
-      ])
-      .audioCodec("libmp3lame")
-      .outputOptions(["-q:a", "2"])
-      .on("end", () => {
-        fs.unlinkSync(inputPath);
-        fs.renameSync(tempOut, inputPath);
-        resolve();
-      })
-      .on("error", (error) => {
-        if (fs.existsSync(tempOut)) {
-          fs.unlinkSync(tempOut);
-        }
-        reject(error);
-      })
-      .save(tempOut);
-  });
-}
-
-function getAudioSampleRate(audioPath) {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(audioPath, (err, data) => {
-      if (err) return reject(err);
-      const audioStream = (data?.streams || []).find((stream) => stream.codec_type === "audio");
-      const parsedSampleRate = Number(audioStream?.sample_rate);
-      if (!parsedSampleRate || Number.isNaN(parsedSampleRate)) {
-        return resolve(44100);
-      }
-      return resolve(parsedSampleRate);
-    });
-  });
-}
 
 function concatAudioSegments(segmentPaths, outputPath) {
   return new Promise((resolve, reject) => {
@@ -456,16 +415,11 @@ async function generateNarrationMp3({
       });
     }
 
-    // Apply a per-voice profile (bass/treble/pitchRatio/volume) so different
-    // voices have distinct timbres even when using the same TTS backend.
     try {
-      const profile = getVoiceProfile(voiceId);
-      await applyVoiceProfileToMp3(segmentPath, profile);
+      await applyAudioProcessingMp3(segmentPath, getVoiceProfile(voiceId), ttsPitch);
     } catch (_) {
-      // Ignore profile application errors and continue.
+      // Non-fatal — raw TTS audio is still usable without EQ/pitch.
     }
-
-    await applyPitchShiftToMp3(segmentPath, ttsPitch);
 
     segmentPaths.push(segmentPath);
   }
